@@ -12,37 +12,45 @@ BaixarInformeDiario <- function(anos_download = NULL,meses_download = NULL){
 
   #### Download dados informes diários #####
 
-  plan(multisession, workers = 6)
-  future_map(anos_download, function(ano){
+  print("Baixando informes diários")
+
+  future::plan(future::multisession, workers = 4)
+
+  furrr::future_map(anos_download, function(ano){
     url <- paste0("https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/HIST/inf_diario_fi_",ano,".zip")
     destfile <- paste0("./inst/extdata/",ano,".zip")
-    download.file(url,destfile)
+    utils::download.file(url,destfile)
   })
 
-  future_map(meses_download, function(mes){
+  furrr::future_map(meses_download, function(mes){
     url <- paste0("https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_",mes,".zip")
     destfile <- paste0("./inst/extdata/",mes,".zip")
-    download.file(url,destfile)
+    utils::download.file(url,destfile)
   })
 
 
   #### Dezipando dados informes diários #####
 
-  zipfiles <- list.files("./dados/informes_diarios/",full.names = T)
+  print("Dezipando informes diarios")
 
-  future_map(zipfiles,function(path){
-    unzip(path,exdir = "./dados/informes_diarios/")
+  zipfiles <- list.files("./inst/extdata/",full.names = T)
+
+  furrr::future_map(zipfiles,function(path){
+    utils::unzip(path,exdir = "./inst/extdata/")
   })
 
-  plan(sequential)
+  future::plan(future::sequential)
   file.remove(zipfiles)
 
   #### Lendo os dados informes diários #####
 
-  informes_path <- list.files("./dados/informes_diarios/",full.names = T,pattern = ".csv")
+  print("Lendo informes diarios")
 
-  plan(multisession, workers = 6)
-  future_map(informes_path,function(informe){
+  informes_path <- list.files("./inst/extdata/",full.names = T,pattern = ".csv")
+
+  future::plan(future::multisession, workers = 4)
+
+  furrr::future_map(informes_path,function(informe){
     readr::read_delim(informe,
                       delim = ";",
                       escape_double = FALSE,
@@ -51,9 +59,13 @@ BaixarInformeDiario <- function(anos_download = NULL,meses_download = NULL){
                       trim_ws = TRUE)
   }) -> informe_diario_fundos
 
+  future::plan(future::sequential)
+  file.remove(informes_path)
 
-  bind_rows(informe_diario_fundos) -> informe_diario_fundos
+  print("Juntando Meses")
+  dplyr::bind_rows(informe_diario_fundos) -> informe_diario_fundos
 
-  dbplyr::write_table(informe_diario_fundos, "informe_diario_fundos", con = pool(), overwrite = TRUE)
+  print("Salvando informes diários")
+  pool::dbWriteTable(pool(),"informe_diario_fundos", informe_diario_fundos, overwrite = TRUE)
 
 }

@@ -14,8 +14,10 @@ BugReports: https://github.com/lemuelemos/ComparadorFundosBack/issues
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-Imports: 
+Imports:
     dplyr,
+    furrr,
+    future,
     pool,
     readr,
     RPostgres
